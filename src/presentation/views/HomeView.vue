@@ -1,21 +1,32 @@
 <script setup lang="ts">
-import SectionLayout from '../layouts/SectionLayout.vue'
 import { Chart, registerables } from 'chart.js'
 import { onMounted } from 'vue'
-import { useAuthStore } from '../stores/authStore'
+import logoUAO from '@/assets/img/logo-alfa-y-omega.jpg'
+import logoTabsoop from '@/assets/img/logo-tabscoob.jpg'
+// import { useAuthStore } from '../stores/authStore'
 
 // Register the necessary components
 Chart.register(...registerables)
 
 function renderCharts() {
-  const gradesChart = document.getElementById('gradesChart') as HTMLCanvasElement | null
-  const paymentsChart = document.getElementById('paymentsChart') as HTMLCanvasElement | null
-  const attendanceChart = document.getElementById('attendanceChart') as HTMLCanvasElement | null
+  const gradesChart = document.getElementById(
+    'gradesChart',
+  ) as HTMLCanvasElement | null
+  const paymentsChart = document.getElementById(
+    'paymentsChart',
+  ) as HTMLCanvasElement | null
+  const attendanceChart = document.getElementById(
+    'attendanceChart',
+  ) as HTMLCanvasElement | null
 
   if (gradesChart && paymentsChart && attendanceChart) {
     const gradesCtx = gradesChart.getContext('2d') as CanvasRenderingContext2D
-    const paymentsCtx = paymentsChart.getContext('2d') as CanvasRenderingContext2D
-    const attendanceCtx = attendanceChart.getContext('2d') as CanvasRenderingContext2D
+    const paymentsCtx = paymentsChart.getContext(
+      '2d',
+    ) as CanvasRenderingContext2D
+    const attendanceCtx = attendanceChart.getContext(
+      '2d',
+    ) as CanvasRenderingContext2D
 
     new Chart(gradesCtx, {
       type: 'bar',
@@ -92,35 +103,35 @@ function renderCharts() {
   }
 }
 
-const store = useAuthStore()
-
 onMounted(() => {
   renderCharts()
 })
 </script>
 
 <template>
-  <SectionLayout>
-    <div class="flex flex-col items-center justify-center">
-      <h1 class="text-4xl font-bold text-gray-900">Bienvenido a la Universidad Alfa y Omega</h1>
-      <p class="mt-4 text-2xl text-gray-700">Gestión Administrativa y Academica</p>
+  <div class="flex flex-col items-center justify-center">
+    <h1 class="text-4xl font-bold text-gray-900">Universidad Alfa y Omega</h1>
+    <h2 class="mt-3 text-2xl font-semibold text-neutral-700">
+      Extension Jalapa
+    </h2>
+    <p class="mt-4 text-2xl text-gray-700">
+      Gestión Administrativa y Academica
+    </p>
+  </div>
+  <div
+    class="mt-8 grid w-full grid-cols-1 gap-4 rounded-2xl border border-neutral-300 bg-neutral-50 p-5 lg:grid-cols-2"
+  >
+    <div class="grid place-content-center rounded-lg bg-white p-6 shadow-md">
+      <img :src="logoTabsoop" alt="" />
+      <!-- <h3 class="text-xl font-semibold text-gray-800">
+        Estadísticas de Calificaciones
+      </h3>
+      <canvas id="gradesChart"></canvas> -->
     </div>
-    <div
-      v-if="store.user?.is_admin"
-      class="mt-8 grid w-full grid-cols-1 gap-4 rounded-2xl border border-neutral-300 bg-neutral-50 p-5 lg:grid-cols-3"
-    >
-      <div class="rounded-lg bg-white p-6 shadow-md">
-        <h3 class="text-xl font-semibold text-gray-800">Estadísticas de Calificaciones</h3>
-        <canvas id="gradesChart"></canvas>
-      </div>
-      <div class="rounded-lg bg-white p-6 shadow-md">
-        <h3 class="text-xl font-semibold text-gray-800">Estadísticas de Pagos</h3>
-        <canvas id="paymentsChart"></canvas>
-      </div>
-      <div class="rounded-lg bg-white p-6 shadow-md">
-        <h3 class="text-xl font-semibold text-gray-800">Estadísticas de Asistencia</h3>
-        <canvas id="attendanceChart"></canvas>
-      </div>
+    <div class="grid place-content-center rounded-lg bg-white p-6 shadow-md">
+      <img :src="logoUAO" alt="" />
+      <!-- <h3 class="text-xl font-semibold text-gray-800">Estadísticas de Pagos</h3>
+      <canvas id="paymentsChart"></canvas> -->
     </div>
-  </SectionLayout>
+  </div>
 </template>

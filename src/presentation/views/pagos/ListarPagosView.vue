@@ -1,198 +1,303 @@
 <script setup lang="ts">
-import { usePagoStore } from '@/presentation/stores/pagoStore'
-import { onMounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import TablaComponent from '@/presentation/components/TablaComponent.vue'
-import DataRow from '@/presentation/components/DataRow.vue'
-import InputComponent from '@/presentation/components/InputComponent.vue'
-import ButtonComponent from '@/presentation/components/ButtonComponent.vue'
-import { Filter, Plus, Printer, Search } from 'lucide-vue-next'
-import { useStoreCarrera } from '@/presentation/stores/carreraStore'
+import { BuscarDiasUseCase } from '@/app/use-cases/alumno/BuscarDiasUseCase'
+import { BuscarTodosAlumnos } from '@/app/use-cases/alumno/BuscarTodosAlumnos'
+import { EliminarAlumnoUseCase } from '@/app/use-cases/alumno/EliminarAlumnoUseCase'
+import { BuscarCarrerasUseCase } from '@/app/use-cases/carrera/BuscarCarrerasUseCase'
+import { filterAlumnos } from '@/app/utils/filterAlumnos'
+import { pageSelector } from '@/app/utils/pagesSelector'
+import type { Alumno } from '@/domain/entities/Alumno'
+import type { Carrera } from '@/domain/entities/Carrera'
+import { Dia } from '@/domain/entities/Dia'
+import type { Pago } from '@/domain/entities/Pago'
+import { AlumnoRepositoryAPI } from '@/infra/repositories/AlumnoRepositoryAPI'
+import { CarreraRepositoryAPI } from '@/infra/repositories/CarreraRepositoryAPI'
+import { DiaRepositoryAPI } from '@/infra/repositories/DiaRepositoryApi'
+import { PagoRepositoryAPI } from '@/infra/repositories/PagoRepositoryAPI'
+import { generarReporteBienvenida } from '@/presentation/reports/BienvenidaReport'
+import { generarReportePagos } from '@/presentation/reports/PagosReport'
+import { generarRecibo } from '@/presentation/reports/ReciboPago'
+import { Filter, Plus, Printer } from 'lucide-vue-next'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { generarReportePago } from '@/presentation/reports/PagoReport'
-// import CheckBoxComponent from '@/presentation/components/CheckBoxComponent.vue'
-import type { Pago } from '@/core/domain/entities/Pago'
-import api from '@/infraestructure/services/api'
-import { error } from 'console'
+import { VaDateInput, type DataTableColumnSource } from 'vuestic-ui'
 
-const matricula = ref('')
-const storePago = usePagoStore()
-const storeCarrera = useStoreCarrera()
-const storePagoRef = storeToRefs(storePago)
-const storeCarreraRef = storeToRefs(storeCarrera)
-const carrera = ref(0)
 const router = useRouter()
 
-const pagos = ref<Pago[]>([])
-const todo = ref(true)
-const fin = ref(new Date().toISOString().split('T')[0])
-const inicio = ref(
-  new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
+const pagos = ref<Pago[]>()
+
+const dia = ref([])
+const carrera = ref('')
+const diaInicio = ref(
+  new Date(new Date().setMonth(new Date().getMonth() - 1))
+    .toISOString()
+    .split('T')[0],
 )
+const diaFin = ref(new Date().toISOString().split('T')[0])
+const filter = ref('')
+const currentPage = ref()
 
-const filtrarPagos = async () => {
-  await storePago.obtenerPagos()
-  let filteredPagos = storePagoRef.pagos.value
+const carreraRepo = new CarreraRepositoryAPI()
+const buscarTodasCarrerasUseCase = new BuscarCarrerasUseCase(carreraRepo)
+const diasRepo = new DiaRepositoryAPI()
+const buscarTodosDiasUseCase = new BuscarDiasUseCase(diasRepo)
+const alumnoRepo = new AlumnoRepositoryAPI()
+const buscarAlumnosUseCase = new BuscarTodosAlumnos(alumnoRepo)
 
-  if (carrera.value !== 0) {
-    filteredPagos = filteredPagos.filter((pago) =>
-      storeCarreraRef.carreras.value.some((carrera) => carrera.nombre === pago.carrera),
-    )
-  }
+const pagosRepo = new PagoRepositoryAPI()
 
-  filteredPagos = filteredPagos.filter((pago) => {
-    const pagoDate = new Date(pago.fecha)
-    return pagoDate >= new Date(inicio.value) && pagoDate <= new Date(fin.value)
-  })
+const carreras = reactive<Carrera[]>([])
 
-  pagos.value = filteredPagos
-}
+const dias = reactive<Dia[]>([])
 
-function buscarFolioMatricula() {
-  const folioMatricula = matricula.value.trim().toLowerCase()
-  let filter: Pago[] = []
+const columns: DataTableColumnSource[] = [
+  'folio',
+  'matricula',
+  'alumno',
+  'carrera',
+  'monto',
+  'semestre',
+  'fecha',
+  'concepto',
+  'acciones',
+]
 
-  if (folioMatricula) {
-    filter = storePagoRef.pagos.value.filter((pago) => {
-      return (
-        pago.folio.toLocaleLowerCase().includes(folioMatricula) ||
-        pago.matricula.toLowerCase().includes(folioMatricula)
-      )
-    })
-  } else {
-    filter = storePagoRef.pagos.value
-  }
-
-  pagos.value = filter
-}
-
-onMounted(async () => {
-  await storeCarrera.fetchCarreras()
-  await storePago.obtenerPagos()
-
-  pagos.value = storePagoRef.pagos.value
+watch(dia, () => {
+  console.log(dia)
 })
 
-watch(todo, (value) => {
-  console.log(value)
+function customFilter() {
+  const filtrado = filterAlumnos(
+    alumnos.value,
+    diaInicio.value,
+    diaFin.value,
+    dia.value,
+    carrera.value,
+  )
+
+  alumnos.value = filtrado
+}
+
+function generarReporte() {
+  generarReportePagos()
+}
+
+async function resetFilters() {
+  dia.value = []
+  carrera.value = ''
+  diaInicio.value = new Date(new Date().setMonth(new Date().getMonth() - 1))
+    .toISOString()
+    .split('T')[0]
+  diaFin.value = new Date().toISOString().split('T')[0]
+  filter.value = ''
+
+  alumnos.value = await buscarAlumnosUseCase.execute()
+}
+
+const alumnos = ref<Alumno[]>([])
+
+onMounted(async () => {
+  const carrerasResponse = await buscarTodasCarrerasUseCase.execute()
+  carreras.push(...(carrerasResponse ?? []))
+  dias.push(...(await buscarTodosDiasUseCase.execute()))
+  alumnos.value = await buscarAlumnosUseCase.execute()
+
+  pagos.value = await pagosRepo.buscarTodos()
 })
 </script>
 
 <template>
-  <div class="mb-4">
-    <div class="flex flex-col gap-5 md:flex-row md:gap-10">
-      <div class="flex w-full flex-col-reverse gap-5 xl:flex-row xl:gap-5">
-        <div class="flex gap-5">
-          <InputComponent v-model:value="inicio" label="Fecha de Inicio" type="date" />
-          <InputComponent v-model:value="fin" label="Fecha de Fin" type="date" />
+  <div class="mb-8">
+    <div
+      class="flex flex-col-reverse items-start gap-5 lg:justify-between lg:gap-10 xl:flex-row"
+    >
+      <div class="flex w-full flex-col items-center gap-5 lg:flex-row">
+        <div class="flex w-full flex-col gap-5 lg:gap-5">
+          <VaDateInput v-model="diaInicio" label="Fecha de Inicio" />
+          <VaDateInput v-model="diaFin" label="Fecha Final" />
         </div>
+        <div class="flex w-full flex-col gap-5 lg:gap-5">
+          <VaSelect
+            v-model="carrera"
+            :options="
+              [{ nombre: 'Todos' }].concat(carreras).map((c) => c.nombre)
+            "
+            placeholder="Seleccione una opción"
+            label="Carrera"
+          />
 
-        <div class="flex gap-5">
-          <!-- carreras -->
-          <fieldset class="space-y-2">
-            <label for="carrera" class="block text-sm font-medium text-gray-700">Carrera:</label>
-            <select
-              v-model="carrera"
-              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
-            >
-              <option value="0">Todas las Carreras</option>
-              <option
-                v-for="carrera in storeCarreraRef.carreras.value"
-                :key="carrera.id"
-                :value="carrera.id"
-              >
-                {{ carrera.nombre }}
-              </option>
-            </select>
-          </fieldset>
-
-          <!-- <CheckBoxComponent :checked="todo" label="Todo" /> -->
-
-          <!-- boton filtrar -->
-          <ButtonComponent
-            @click="filtrarPagos"
-            color="warning"
-            class="mt-auto flex justify-between gap-2"
-          >
-            Filtrar <Filter />
-          </ButtonComponent>
+          <!-- <VaSelect
+              multiple
+              v-model="dia"
+              :options="
+                dias.map((d) => ({
+                  label: d.dia,
+                  value: d.id,
+                }))
+              "
+              text-by="label"
+              value-by="value"
+              placeholder="Seleccione una opción"
+              label="Dia/s"
+            /> -->
         </div>
+        <div class="mt-auto flex flex-col gap-3">
+          <VaButton @click="customFilter">
+            Filtrar <Filter class="ml-2" />
+          </VaButton>
+          <VaButton @click="resetFilters"> Remover </VaButton>
+        </div>
+      </div>
+      <!-- boton filtrar -->
 
-        <!-- opciones -->
-        <div class="mt-auto ml-auto flex gap-5">
-          <ButtonComponent
-            @click="generarReportePago(matricula, new Date(inicio), new Date(fin), carrera, todo)"
-            color="dark"
-            class="flex items-center gap-3"
-          >
-            Reporte General <Printer />
-          </ButtonComponent>
-          <ButtonComponent
-            @click="() => router.push({ name: 'registrar-pago' })"
+      <!-- opciones -->
+      <div class="ml-auto flex gap-5 xl:ml-0">
+        <VaButtonGroup>
+          <VaButton @click="generarReporte" color="#000">
+            Reporte General <Printer class="ml-2" />
+          </VaButton>
+          <VaButton
+            @click="
+              async () => {
+                await router.push({ name: 'registrar-pago' })
+              }
+            "
             color="success"
-            class="flex items-center gap-3"
-          >
-            Nuevo <Plus />
-          </ButtonComponent>
-        </div>
+            >Nuevo <Plus class="ml-2" />
+          </VaButton>
+        </VaButtonGroup>
       </div>
     </div>
 
     <div class="mt-8 flex items-center gap-5">
-      <InputComponent
-        class="w-full md:w-1/3"
-        placeholder="Matricula o Nombre a buscar"
-        v-model:value="matricula"
-        label="Matrícula"
+      <VaInput
+        v-model="filter"
+        label="Buscar Alumno"
+        placeholder="Ingrese la palabra a buscar"
       />
-      <ButtonComponent
-        @click="buscarFolioMatricula()"
-        color="primary"
-        class="mt-auto flex justify-between gap-2"
-      >
-        Buscar <Search />
-      </ButtonComponent>
     </div>
   </div>
 
-  <TablaComponent
-    title="Pagos"
-    description="Listado de los pagos realizados"
-    :headers="['Folio', 'Matricula', 'Alumno', 'Monto', 'Concepto', 'Carrera', 'Acciones']"
-    :length="storePagoRef.pagos.value.length"
-  >
-    <template #other>
-      <div class="my-2 text-right">
-        Recaudado: ${{ pagos.reduce((sum, pago) => Number(sum) + Number(pago.monto), 0) }}
-      </div>
-    </template>
-    <DataRow
-      v-for="(pago, index) in pagos"
-      :key="index"
-      :columns="[
-        pago.folio,
-        pago.matricula,
-        pago.alumno,
-        pago.monto.toString(),
-        pago.concepto,
-        pago.carrera,
-      ]"
-      :edit-link="{ name: 'actualizar-pago', params: { id: pago.folio } }"
+  <div>
+    <VaDataTable
+      :filter="filter"
+      :items="
+        pagos?.map((p) => ({
+          folio: p.folio,
+          matricula: p.matricula,
+          alumno: p.alumno,
+          carrera: p.carrera,
+          monto: p.monto,
+          semestre: p.semestre,
+          fecha: p.fecha,
+          concepto: p.concepto,
+        }))
+      "
+      :columns="columns"
+      :per-page="10"
+      :current-page="currentPage"
     >
-      <!-- :deleted="
-        async () => {
-          try {
-            await api.delete(`pagos/${pago.folio}/`)
-            await storePago.obtenerPagos()
-          } catch (error) {
-            console.log('Error al eliminar')
-            console.error(error)
-          }
-        }
-      " -->
-      <button>
-        <Printer />
-      </button>
-    </DataRow>
-  </TablaComponent>
+      <template #cell(activo)="{ value }">
+        <VaChip :color="value == 'true' ? 'primary' : 'danger'">
+          <template v-if="value == 'true'">
+            <VaIcon name="check" />
+          </template>
+          <template v-else>
+            <VaIcon name="close" />
+          </template>
+        </VaChip>
+      </template>
+
+      <template #cell(acciones)="{ rowIndex }">
+        <VaButtonGroup>
+          <VaButton
+            title="ver"
+            color="success"
+            icon="visibility"
+            @click="
+              async () => {
+                if (pagos && pagos[rowIndex]) {
+                  await router.push({
+                    name: 'ver-pago',
+                    params: { id: pagos[rowIndex].folio },
+                  })
+                }
+              }
+            "
+          />
+          <VaButton
+            icon="edit"
+            title="editar"
+            @click="
+              async () => {
+                if (pagos && pagos[rowIndex]) {
+                  await router.push({
+                    name: 'editar-alumno',
+                    params: { id: pagos[rowIndex].folio },
+                  })
+                }
+              }
+            "
+            color="warning"
+          />
+          <VaButton
+            @click="
+              async () => {
+                const alumnoRepo = new AlumnoRepositoryAPI()
+                const elimanrAlumnoUseCase = new EliminarAlumnoUseCase(
+                  alumnoRepo,
+                )
+
+                await elimanrAlumnoUseCase.execute(alumnos[rowIndex].id)
+
+                alumnos = await buscarAlumnosUseCase.execute()
+              }
+            "
+            title="eliminar"
+            color="error"
+            icon="delete"
+          />
+          <VaButton
+            @click="
+              () => {
+                generarRecibo({
+                  extension: 'Jalapa',
+                  folio: 0,
+                  dataPago: {
+                    alumno: '',
+                    carrera: '',
+                    monto: 0,
+                    semestre: 0,
+                    fecha: '',
+                    concepto: '',
+                    cadena: '',
+                    comentario: '',
+                    creado: '',
+                    folio: '',
+                    matricula: '',
+                    recibe: '',
+                    tipo: 'E',
+                  },
+                })
+              }
+            "
+            title="imprimir"
+            color="secondary"
+            icon="print"
+          />
+        </VaButtonGroup>
+      </template>
+      <template #bodyAppend>
+        <tr>
+          <td colspan="100%" class="text-center">
+            <div class="flex justify-center">
+              <VaPagination
+                v-model="currentPage"
+                :pages="pageSelector(10, alumnos.length)"
+              />
+            </div>
+          </td>
+        </tr>
+      </template>
+    </VaDataTable>
+  </div>
 </template>

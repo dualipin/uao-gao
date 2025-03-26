@@ -18,7 +18,7 @@ export function headerPDF(doc: jsPDF) {
   doc.setTextColor(0, 0, 0)
   doc.text('Universidad Alfa y Omega', 105, 20, { align: 'center' })
   doc.setFontSize(16)
-  doc.text('Extensión Pichucalco', 105, 30, { align: 'center' })
+  doc.text('Extensión Jalapa', 105, 30, { align: 'center' })
 
   // ** Línea separadora (como border-b-2) **
   doc.setDrawColor(0, 50, 0) // Verde oscuro

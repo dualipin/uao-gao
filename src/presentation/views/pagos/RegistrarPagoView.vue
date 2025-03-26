@@ -1,89 +1,65 @@
 <script setup lang="ts">
-import { Alumno } from '@/core/domain/entities/Alumno'
-// import { Carrera } from '@/core/domain/entities/Carrera'
-import type { Pago } from '@/core/domain/entities/Pago'
-import api from '@/infraestructure/services/api'
-import ButtonComponent from '@/presentation/components/ButtonComponent.vue'
-import FormPagoComponent from '@/presentation/components/FormPagoComponent.vue'
+import PagoForm from '@/presentation/components/pago/PagoForm.vue'
 import FormLayout from '@/presentation/layouts/FormLayout.vue'
-import { alumnosStore } from '@/presentation/stores/alumnosStore'
-import { useAuthStore } from '@/presentation/stores/authStore'
-import { useStoreCarrera } from '@/presentation/stores/carreraStore'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
+import type { FormDataPago } from '../types/formdatapago'
+import api from '@/infra/services/api'
+import { useToast } from 'vuestic-ui'
+import { generarRecibo } from '@/presentation/reports/ReciboPago'
 
-const auth = useAuthStore()
-const alumnoStore = alumnosStore()
-const carreraStore = useStoreCarrera()
+const toast = useToast()
 
-const alumnoUni = ref<Alumno>()
-// const carrera = ref<Carrera>()
-
-const pago = ref<Pago>({
-  folio: '',
-  monto: 500,
-  alumno: '',
-  concepto: '0',
-  cadena: '',
-  carrera: '0',
-  comentario: '',
-  creado: '',
-  fecha: '',
-  matricula: '',
-  recibe: `${auth.user?.nombres} ${auth.user?.apellidos}`,
-  semestre: '1',
-  tipo: 'N',
+const pago = ref<FormDataPago>({
+  alumno: null,
+  comentarios: '',
+  concepto: null,
+  monto: null,
+  recibe: Number(localStorage.getItem('user')) || 1,
+  tipo: null,
 })
 
-async function getAlumno() {
-  await alumnoStore.obtenerAlumnos()
-  await carreraStore.fetchCarreras()
-  const alumnos = alumnoStore.alumnos
-  const carreras = carreraStore.carreras
-
-  alumnos.find((alumno) => {
-    if (alumno.matricula === pago.value.matricula) {
-      alumnoUni.value = alumno
-      pago.value.alumno = `${alumno.nombres} ${alumno.apellidos}`
-      pago.value.carrera =
-        carreras.find((carrera) => carrera.id === alumno.carrera)?.id.toString() || ''
-      pago.value.semestre = alumno.semestre?.toString() || ''
-      return true
-    }
-  })
+function pagoValidate(formData: FormDataPago) {
+  return (
+    formData.alumno !== null &&
+    formData.concepto !== null &&
+    formData.monto !== null &&
+    formData.recibe !== null &&
+    formData.tipo !== null
+  )
 }
 
-async function registrarPago() {
-  try {
-    const response = await api.post('/pagos/', {
-      monto: pago.value.monto,
-      comentarios: pago.value.comentario,
-      tipo: pago.value.tipo,
-      alumno: alumnoUni.value?.id,
-      concepto: pago.value.concepto,
-      recibe: auth.user?.id,
+async function submitPago(formData: FormDataPago) {
+  if (!pagoValidate(formData)) {
+    console.log('Formulario incompleto')
+    toast.notify({
+      message: 'Formulario incompleto',
+      color: 'error',
     })
-    console.log('Pago registrado exitosamente:', response.data)
-  } catch (error) {
-    console.error('Error al registrar el pago:', error)
+    return
   }
-}
 
-watch(pago, () => {
-  console.log(pago)
-})
+  try {
+    const response = await api.post('/pagos/', formData)
+    console.log(response)
+    toast.notify({
+      message: 'Pago registrado',
+      color: 'success',
+    })
+
+    generarRecibo({ extension: 'Jalapa', folio: response.data.folio })
+    return
+  } catch (error) {
+    console.error(error)
+  }
+  console.log(formData)
+}
 </script>
 
 <template>
-  <FormLayout title="Registro de pagos">
-    <FormPagoComponent
-      :search="
-        () => {
-          getAlumno()
-        }
-      "
-      v-model:pago="pago!"
-    >
-      <ButtonComponent @click="registrarPago"> Registrar </ButtonComponent>
-    </FormPagoComponent>
+  <FormLayout
+    title="Registro de nuevo pago"
+    descripcion="Formulario para el registro de pago de los estudiantes"
+  >
+    <PagoForm v-bind:pago="pago" modo="registrar" @submit="submitPago" />
   </FormLayout>
 </template>

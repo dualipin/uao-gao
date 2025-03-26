@@ -11,7 +11,9 @@ watch(route, () => {
 </script>
 
 <template>
-  <header class="rounded-3xl border border-neutral-300 bg-white px-6 py-4 shadow-md">
+  <header
+    class="rounded-3xl border border-neutral-300 bg-white px-6 py-4 shadow-md"
+  >
     <div class="flex items-center justify-between">
       <h1 class="text-3xl font-bold text-gray-800">
         {{

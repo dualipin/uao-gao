@@ -13,6 +13,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@fontsource/source-sans-pro": "^5.2.5",
     "@tailwindcss/vite": "^4.0.6",
     "axios": "^1.8.1",
     "chart.js": "^4.4.8",
@@ -20,11 +21,13 @@
     "jspdf": "^3.0.0",
     "jspdf-autotable": "^5.0.2",
     "lucide-vue-next": "^0.476.0",
+    "material-icons": "^1.13.14",
     "pinia": "^2.3.1",
     "pinia-plugin-persistedstate": "^4.2.0",
     "tailwindcss": "^4.0.6",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "vuestic-ui": "^1.10.3"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.0",
